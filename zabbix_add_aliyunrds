@@ -1,0 +1,51 @@
+#!/usr/bin/python
+#-*- coding:utf8 -*-
+import sys
+from zabbix_api import ZabbixAPI
+server = "http://YourZabbixServerAddress"
+username = "Admin"
+password = "password"
+zapi = ZabbixAPI(server=server, path="", log_level=0)
+zapi.login(username, password)
+ 
+def get_hostinfo():
+        #主要用来获取host的id，接口的id，其中HOST_NAME就是你想往哪个host里面增添item。
+    host_info=zapi.host.get({"selectInterfaces":["interfaceid"],"filter":{"host":["HOST_NAME"]}})
+    hostid = host_info[0]['hostid']
+    interfaceid =  host_info[0]['interfaces'][0]['interfaceid']
+    return (hostid,interfaceid)
+ 
+def create_item(name,key):
+     a = get_hostinfo()
+     hostid = a[0]
+     interfaceid = a[1]
+     create_item=zapi.item.create(
+         {
+             "name":name,
+             "key_":key,
+             "hostid":hostid,
+             "type":0,
+             "value_type":0,#0是float，3是整数
+             "interfaceid":interfaceid,
+             "date_type":0,
+             "delay":60,
+             "history":7,
+             "trends":90,
+             "status":0,
+             "applications":[ #如果不放入某个applications可以删掉此项
+                 "2311"
+             ]
+         }
+     )
+     return "item create success"
+if __name__ == "__main__":
+    arg1='CpuUsage'
+    with open('conf') as f:
+            #从conf文件中读取实例id和实例名称。
+        for i in f:
+            rds=i.split()
+            key="rds.get_from_cms[acs_rds,%s,%s]"%(arg1,rds[0])
+            name="%s-%s"%(rds[1],arg1)
+            print key,name
+            result=create_item(name,key) #调用添加函数。
+            print result
